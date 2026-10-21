@@ -17,7 +17,7 @@ import { AvatarPresenter } from '@/components/AvatarPresenter';
 import { CandidateCamera } from '@/components/CandidateCamera';
 import { ConversationPanel } from '@/components/ConversationPanel';
 import { InterviewToolbar } from '@/components/InterviewToolbar';
-import { Loader2, AlertCircle, Maximize2, Minimize2, MessageSquare, Video } from 'lucide-react';
+import { Loader2, AlertCircle, Maximize2, Minimize2, MessageSquare, Video, PhoneOff } from 'lucide-react';
 
 type ConversationEntry = {
   role: 'interviewer' | 'candidate';
@@ -841,16 +841,25 @@ export default function VideoInterviewRoom() {
           </select> */}
           <button
             onClick={handleToggleFullscreen}
-            className="p-1.5 sm:p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs transition"
+            className="p-1.5 sm:p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs transition hidden xs:flex sm:flex"
             title={isBrowserFullscreen ? 'Exit full screen' : 'Enter full screen'}
           >
             {isBrowserFullscreen ? <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </button>
-          {/* Chat panel toggle — always visible */}
+          {/* Mobile End Call Button in Top Header */}
+          <button
+            onClick={handleEndInterview}
+            title="End Interview Call"
+            className="flex sm:hidden items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium text-[11px] shadow-sm transition active:scale-95"
+          >
+            <PhoneOff className="w-3.5 h-3.5" />
+            <span>End</span>
+          </button>
+          {/* Chat panel toggle — visible on tablet/desktop */}
           <button
             type="button"
             onClick={toggleChat}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${isChatVisible
+            className={`hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${isChatVisible
               ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300 hover:bg-indigo-600/30'
               : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white'
               }`}
