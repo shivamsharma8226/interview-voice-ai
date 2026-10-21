@@ -122,3 +122,10 @@ export type InterviewState =
   | 'paused'
   | 'completed'
   | 'failed';
+
+export const ConversationTurnSchema = z.object({
+  intent: z.enum(['answer', 'clarification', 'discussion', 'repeat', 'hint', 'skip', 'unclear']),
+  reply: z.string().default(''),
+  answerComplete: z.boolean().default(false),
+});
+export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;

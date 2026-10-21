@@ -28,8 +28,20 @@ export class ResumeParserService {
     try {
       if (mimeType === 'application/pdf' || ext === '.pdf') {
         const dataBuffer = fs.readFileSync(filePath);
-        const pdfData = await pdfParse(dataBuffer);
-        rawText = pdfData.text || '';
+        try {
+          const pdfData = await pdfParse(dataBuffer);
+          rawText = pdfData.text || '';
+        } catch (pdfErr: any) {
+          try {
+            const { execFileSync } = await import('child_process');
+            rawText = execFileSync('pdftotext', [filePath, '-'], {
+              encoding: 'utf-8',
+              stdio: ['ignore', 'pipe', 'ignore'],
+            });
+          } catch {
+            throw pdfErr;
+          }
+        }
       } else if (
         mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
         mimeType === 'application/msword' ||

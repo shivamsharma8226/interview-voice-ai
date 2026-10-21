@@ -1,7 +1,10 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
+// Load server/.env first, then the repo-root .env (the one documented in .env.example).
+// dotenv never overrides values that are already set, so server/.env wins.
 dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 
 export const config = {
   port: parseInt(process.env.PORT || '5000', 10),
@@ -15,6 +18,8 @@ export const config = {
   llmModel: process.env.LLM_MODEL || 'gemini-1.5-flash',
   speechToTextApiKey: process.env.SPEECH_TO_TEXT_API_KEY || '',
   textToSpeechApiKey: process.env.TEXT_TO_SPEECH_API_KEY || '',
+  murfVoiceId: process.env.MURF_VOICE_ID || 'en-US-wayne',
+  deepgramModel: process.env.DEEPGRAM_MODEL || 'flux-general-en',
   uploadDir: path.resolve(process.cwd(), 'uploads'),
   maxFileSize: 10 * 1024 * 1024, // 10MB
 };

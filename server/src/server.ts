@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { connectDB } from './config/db.js';
 import { config } from './config/env.js';
+import { attachVoiceGateway } from './services/voiceGateway.js';
 
 const startServer = async () => {
   try {
@@ -17,6 +18,8 @@ const startServer = async () => {
       console.log(`   API URL:     http://localhost:${config.port}/api`);
       console.log(`=======================================================`);
     });
+
+    attachVoiceGateway(server);
 
     const shutdown = () => {
       console.log('\nGracefully shutting down InterviewAI server...');

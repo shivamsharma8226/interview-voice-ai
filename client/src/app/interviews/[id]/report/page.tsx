@@ -393,7 +393,7 @@ export default function InterviewReportPage() {
                         Candidate Answer Transcript:
                       </h5>
                       <p className="text-slate-300 italic bg-slate-900 p-3 rounded-lg border border-slate-800 leading-relaxed">
-                        "{answer?.transcript || '(No answer provided)'}"
+                        &ldquo;{answer?.transcript || '(No answer provided)'}&rdquo;
                       </p>
                     </div>
 

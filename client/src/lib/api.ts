@@ -231,6 +231,22 @@ export const api = {
     return res.data;
   },
 
+  async chatTurn(
+    id: string,
+    payload: { questionId: string; utterance: string; answerSoFar: string }
+  ): Promise<{
+    intent: 'answer' | 'clarification' | 'discussion' | 'repeat' | 'hint' | 'skip' | 'unclear';
+    reply: string;
+    answerComplete: boolean;
+    conversational: boolean;
+  }> {
+    const res = await fetchWithAuth<{ success: boolean; data: any }>(`/interviews/${id}/chat`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return res.data;
+  },
+
   async pauseInterview(id: string): Promise<{ interview: InterviewItem }> {
     const res = await fetchWithAuth<{ success: boolean; data: { interview: InterviewItem } }>(
       `/interviews/${id}/pause`,
@@ -292,6 +308,8 @@ export const api = {
     hasExternalSttKey: boolean;
     hasExternalTtsKey: boolean;
     preferredEngine: string;
+    serverStt: boolean;
+    serverTts: boolean;
   }> {
     const res = await fetchWithAuth<{ success: boolean; data: any }>('/voice/status');
     return res.data;

@@ -113,7 +113,7 @@ export default function LandingPage() {
                       Question 2 of 5 • Technical Accuracy & Scalability
                     </p>
                     <p className="text-lg text-slate-100 font-medium leading-relaxed">
-                      "In your resume, you highlighted optimizing an asynchronous distributed ledger service. What specific cache invalidation strategy did you implement to prevent cache stampedes and ensure transaction consistency?"
+                      &quot;In your resume, you highlighted optimizing an asynchronous distributed ledger service. What specific cache invalidation strategy did you implement to prevent cache stampedes and ensure transaction consistency?&quot;
                     </p>
                   </div>
 
@@ -126,7 +126,7 @@ export default function LandingPage() {
                         Real-Time Speech Recognition Buffer
                       </h4>
                       <p className="text-sm text-slate-300 mt-0.5">
-                        "We implemented a Cache-Aside strategy with Redis connection pooling. For the stampede issue, we used distributed mutex locks so only one instance repopulates stale keys..."
+                        &quot;We implemented a Cache-Aside strategy with Redis connection pooling. For the stampede issue, we used distributed mutex locks so only one instance repopulates stale keys...&quot;
                       </p>
                     </div>
                   </div>
@@ -137,7 +137,7 @@ export default function LandingPage() {
                     <Brain className="w-3.5 h-3.5 text-violet-400" /> Rubric: Concept depth, Error handling, Evidence
                   </span>
                   <span className="text-indigo-400 font-medium">
-                    Adaptive Follow-Up Ready: "How would that behave if the Redis master failed?"
+                    Adaptive Follow-Up Ready: &quot;How would that behave if the Redis master failed?&quot;
                   </span>
                 </div>
               </div>

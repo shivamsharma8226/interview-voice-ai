@@ -11,6 +11,7 @@ router.get('/', InterviewController.list);
 router.get('/:id', InterviewController.getById);
 router.post('/:id/start', InterviewController.start);
 router.post('/:id/answers', InterviewController.submitAnswer);
+router.post('/:id/chat', InterviewController.chat);
 router.post('/:id/pause', InterviewController.pause);
 router.post('/:id/resume', InterviewController.resume);
 router.post('/:id/complete', InterviewController.complete);

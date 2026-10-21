@@ -5,9 +5,23 @@ import { AuthenticatedRequest } from '../middleware/auth.js';
 import { Interview, IInterview } from '../models/Interview.js';
 import { InterviewQuestion, IInterviewQuestion } from '../models/InterviewQuestion.js';
 import { InterviewAnswer } from '../models/InterviewAnswer.js';
+import { InterviewTurn } from '../models/InterviewTurn.js';
 import { Resume } from '../models/Resume.js';
 import { AIService } from '../services/aiService.js';
 import { CandidateProfile } from '../types/index.js';
+
+const ChatTurnSchema = z.object({
+  questionId: z.string().min(1),
+  utterance: z.string().trim().min(1, 'Nothing was said').max(4000),
+  answerSoFar: z.string().max(12000).default(''),
+});
+
+const INTERVIEWER_PERSONAS: Record<string, { name: string; style: string }> = {
+  hr: { name: 'Sarah Mitchell', style: 'warm talent acquisition lead' },
+  behavioral: { name: 'Sarah Mitchell', style: 'warm talent acquisition lead' },
+  custom: { name: 'Marcus Webb', style: 'patient principal engineer and mentor' },
+};
+const DEFAULT_PERSONA = { name: 'Alex Chen', style: 'precise senior technical interviewer' };
 
 const CreateInterviewSchema = z.object({
   resumeId: z.string().optional(),
@@ -187,6 +201,10 @@ export class InterviewController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Interview session not found' });
+        return;
+      }
       const interview = await Interview.findOne({ _id: id, userId: req.user.id });
 
       if (!interview) {
@@ -230,6 +248,10 @@ export class InterviewController {
         },
       });
     } catch (error: any) {
+      if (error?.name === 'CastError') {
+        res.status(404).json({ success: false, message: 'Interview session not found' });
+        return;
+      }
       console.error('[InterviewController.getById] Error:', error);
       res.status(500).json({ success: false, message: 'Server error fetching interview' });
     }
@@ -246,6 +268,10 @@ export class InterviewController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Interview session not found' });
+        return;
+      }
       const interview = await Interview.findOne({ _id: id, userId: req.user.id });
 
       if (!interview) {
@@ -307,6 +333,10 @@ export class InterviewController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Interview session not found' });
+        return;
+      }
       const parsed = SubmitAnswerSchema.safeParse(req.body);
 
       if (!parsed.success) {
@@ -496,6 +526,86 @@ export class InterviewController {
   }
 
   /**
+   * Conversational turn: candidate speech -> intent + interviewer reply (doubts, clarification, discussion)
+   */
+  public static async chat(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: 'Unauthorized' });
+        return;
+      }
+
+      const parsed = ChatTurnSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ success: false, message: parsed.error.errors[0]?.message || 'Invalid chat payload' });
+        return;
+      }
+      const { questionId, utterance, answerSoFar } = parsed.data;
+
+      const interview = await Interview.findOne({ _id: req.params.id, userId: req.user.id });
+      if (!interview) {
+        res.status(404).json({ success: false, message: 'Interview session not found' });
+        return;
+      }
+      if (interview.state === 'completed') {
+        res.status(400).json({ success: false, message: 'Interview has already completed' });
+        return;
+      }
+
+      const question = await InterviewQuestion.findOne({ _id: questionId, interviewId: interview._id });
+      if (!question) {
+        res.status(404).json({ success: false, message: 'Question does not belong to this interview' });
+        return;
+      }
+
+      let candidateProfile: CandidateProfile | undefined;
+      if (interview.resumeId) {
+        const resumeDoc = await Resume.findOne({ _id: interview.resumeId, userId: req.user.id });
+        candidateProfile = resumeDoc?.parsedProfile;
+      }
+
+      const recent = await InterviewTurn.find({ interviewId: interview._id }).sort({ createdAt: -1 }).limit(10);
+      const history = recent.reverse().map((t) => ({ role: t.role, text: t.text }));
+
+      const turn = await AIService.converseTurn({
+        targetRole: interview.targetRole,
+        interviewType: interview.interviewType,
+        experienceLevel: interview.experienceLevel,
+        questionText: question.questionText,
+        answerSoFar,
+        utterance,
+        history,
+        candidateProfile,
+        persona: INTERVIEWER_PERSONAS[interview.interviewType] || DEFAULT_PERSONA,
+      });
+
+      // Local engine cannot hold a conversation: treat every utterance as part of the answer
+      const result = turn ?? { intent: 'answer' as const, reply: '', answerComplete: false };
+
+      await InterviewTurn.create({
+        interviewId: interview._id,
+        questionId: question._id,
+        role: 'candidate',
+        text: utterance,
+        intent: result.intent,
+      });
+      if (result.reply.trim()) {
+        await InterviewTurn.create({
+          interviewId: interview._id,
+          questionId: question._id,
+          role: 'interviewer',
+          text: result.reply.trim(),
+        });
+      }
+
+      res.status(200).json({ success: true, data: { ...result, conversational: Boolean(turn) } });
+    } catch (error: any) {
+      console.error('[InterviewController.chat] Error:', error);
+      res.status(502).json({ success: false, message: `Interviewer could not respond: ${error.message}` });
+    }
+  }
+
+  /**
    * Pause ongoing interview
    */
   public static async pause(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -506,6 +616,10 @@ export class InterviewController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Interview session not found' });
+        return;
+      }
       const interview = await Interview.findOneAndUpdate(
         { _id: id, userId: req.user.id },
         { $set: { state: 'paused', pausedAt: new Date() } },
@@ -539,6 +653,10 @@ export class InterviewController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Interview session not found' });
+        return;
+      }
       const interview = await Interview.findOneAndUpdate(
         { _id: id, userId: req.user.id },
         { $set: { state: 'asking' } },
@@ -578,6 +696,10 @@ export class InterviewController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Interview session not found' });
+        return;
+      }
       const interview = await Interview.findOne({ _id: id, userId: req.user.id });
 
       if (!interview) {
@@ -613,6 +735,10 @@ export class InterviewController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Interview session not found' });
+        return;
+      }
       const interview = await Interview.findOne({ _id: id, userId: req.user.id });
 
       if (!interview) {
@@ -664,6 +790,10 @@ export class InterviewController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Original interview session not found' });
+        return;
+      }
       const originalInterview = await Interview.findOne({ _id: id, userId: req.user.id });
 
       if (!originalInterview) {
@@ -740,6 +870,10 @@ export class InterviewController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Interview session not found' });
+        return;
+      }
       const interview = await Interview.findOneAndDelete({ _id: id, userId: req.user.id });
 
       if (!interview) {

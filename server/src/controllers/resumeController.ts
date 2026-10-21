@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { Resume } from '../models/Resume.js';
 import { ResumeParserService } from '../services/resumeParser.js';
@@ -101,6 +102,11 @@ export class ResumeController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Resume not found' });
+        return;
+      }
+
       const resume = await Resume.findOne({ _id: id, userId: req.user.id });
 
       if (!resume) {
@@ -115,6 +121,10 @@ export class ResumeController {
         },
       });
     } catch (error: any) {
+      if (error?.name === 'CastError') {
+        res.status(404).json({ success: false, message: 'Resume not found' });
+        return;
+      }
       console.error('[ResumeController.getById] Error:', error);
       res.status(500).json({ success: false, message: 'Server error fetching resume' });
     }
@@ -128,6 +138,11 @@ export class ResumeController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Resume not found' });
+        return;
+      }
+
       const parsed = CandidateProfileSchema.safeParse(req.body);
 
       if (!parsed.success) {
@@ -158,6 +173,10 @@ export class ResumeController {
         },
       });
     } catch (error: any) {
+      if (error?.name === 'CastError') {
+        res.status(404).json({ success: false, message: 'Resume not found' });
+        return;
+      }
       console.error('[ResumeController.updateProfile] Error:', error);
       res.status(500).json({ success: false, message: 'Server error updating profile' });
     }
@@ -171,6 +190,11 @@ export class ResumeController {
       }
 
       const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        res.status(404).json({ success: false, message: 'Resume not found' });
+        return;
+      }
+
       const resume = await Resume.findOneAndDelete({ _id: id, userId: req.user.id });
 
       if (!resume) {
@@ -183,6 +207,10 @@ export class ResumeController {
         message: 'Resume deleted successfully',
       });
     } catch (error: any) {
+      if (error?.name === 'CastError') {
+        res.status(404).json({ success: false, message: 'Resume not found' });
+        return;
+      }
       console.error('[ResumeController.delete] Error:', error);
       res.status(500).json({ success: false, message: 'Server error deleting resume' });
     }

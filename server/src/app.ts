@@ -117,6 +117,12 @@ export const createApp = () => {
       return;
     }
 
+    // Mongoose CastError (invalid ObjectId format)
+    if (err.name === 'CastError') {
+      res.status(404).json({ success: false, message: 'Resource not found' });
+      return;
+    }
+
     // Mongoose Duplicate Key Error
     if (err.code === 11000) {
       res.status(409).json({ success: false, message: 'Duplicate record already exists.' });
