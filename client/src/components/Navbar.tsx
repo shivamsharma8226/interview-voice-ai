@@ -22,6 +22,11 @@ export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Hide on interview room pages so the room gets the full viewport
+  const isInterviewRoom = /^\/interviews\/[^/]+$/.test(pathname || '') && pathname !== '/interviews/new';
+  if (isInterviewRoom) return null;
+
   const handleLogout = async () => {
     await logout();
     router.push('/dashboard');

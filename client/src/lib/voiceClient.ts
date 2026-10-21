@@ -126,11 +126,11 @@ export async function startDeepgramListener(
     try {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'CloseStream' }));
       ws.close();
-    } catch {}
+    } catch { }
     node.port.onmessage = null;
     source.disconnect();
     stream.getTracks().forEach((t) => t.stop());
-    audioCtx.close().catch(() => {});
+    audioCtx.close().catch(() => { });
   };
 
   return { stop, setMuted: (m) => { muted = m; } };
@@ -176,7 +176,7 @@ export const ServerSpeaker = {
 
     const pending = splitForTts(text).map((chunk) => {
       const p = fetchSpeech(chunk, abort.signal);
-      p.catch(() => {});
+      p.catch(() => { });
       return p;
     });
 

@@ -17,7 +17,7 @@ import { AvatarPresenter } from '@/components/AvatarPresenter';
 import { CandidateCamera } from '@/components/CandidateCamera';
 import { ConversationPanel } from '@/components/ConversationPanel';
 import { InterviewToolbar } from '@/components/InterviewToolbar';
-import { Loader2, AlertCircle, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, AlertCircle, Maximize2, Minimize2, MessageSquare, Video } from 'lucide-react';
 
 type ConversationEntry = {
   role: 'interviewer' | 'candidate';
@@ -49,6 +49,7 @@ export default function VideoInterviewRoom() {
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isSpeechMuted, setIsSpeechMuted] = useState(false);
+  const [voiceLanguage, setVoiceLanguage] = useState<'en-US' | 'hi-IN'>('en-US');
   const [isPaused, setIsPaused] = useState(false);
 
   // ─── Timer ───────────────────────────────────────────────────────────
@@ -58,8 +59,10 @@ export default function VideoInterviewRoom() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showEndModal, setShowEndModal] = useState(false);
-  const [isPanelExpanded, setIsPanelExpanded] = useState(true);
+  const [isPanelExpanded, setIsPanelExpanded] = useState(false);
   const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'video' | 'chat'>('video');
 
   // ─── Refs ─────────────────────────────────────────────────────────────
   const recognitionControllerRef = useRef<{ stop: () => void } | null>(null);
@@ -77,6 +80,7 @@ export default function VideoInterviewRoom() {
   const pendingUtterancesRef = useRef<string[]>([]);
   const isMicMutedRef = useRef(false);
   const voiceFallbackInProgressRef = useRef(false);
+  const voiceLanguageRef = useRef<'en-US' | 'hi-IN'>('en-US');
   const interviewRoomRef = useRef<HTMLDivElement>(null);
 
   const joinText = (a: string, b: string) => [a.trim(), b.trim()].filter(Boolean).join(' ');
@@ -106,11 +110,60 @@ export default function VideoInterviewRoom() {
   }, [isMicMuted]);
 
   useEffect(() => {
+    voiceLanguageRef.current = voiceLanguage;
+  }, [voiceLanguage]);
+
+  // Unified Chat/Video view state for all devices:
+  // On mobile: switches full-width views
+  // On desktop: toggles the side panel
+  const isChatVisible = isMobileView ? mobileTab === 'chat' : isPanelExpanded;
+
+  const showVideo = () => {
+    setMobileTab('video');
+    setIsPanelExpanded(false);
+  };
+
+  const showChat = () => {
+    setMobileTab('chat');
+    setIsPanelExpanded(true);
+  };
+
+  const toggleChat = () => {
+    if (isChatVisible) {
+      showVideo();
+    } else {
+      showChat();
+    }
+  };
+
+  const handleVoiceLanguageChange = (newLang: 'en-US' | 'hi-IN') => {
+    setVoiceLanguage(newLang);
+    voiceLanguageRef.current = newLang;
+    if (phaseRef.current === 'listening') {
+      stopListening();
+      stopServerListener();
+      setTimeout(() => {
+        if (phaseRef.current === 'listening' && !isMicMutedRef.current) {
+          startListening(newLang);
+        }
+      }, 80);
+    }
+  };
+
+  useEffect(() => {
     const syncFullscreenState = () => {
       setIsBrowserFullscreen(document.fullscreenElement === interviewRoomRef.current);
     };
     document.addEventListener('fullscreenchange', syncFullscreenState);
     return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
+  }, []);
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   // ─── Timer Loop ───────────────────────────────────────────────────────
@@ -242,6 +295,7 @@ export default function VideoInterviewRoom() {
     const browserSpeak = () =>
       BrowserSpeechService.speak(text, {
         persona: speakerPersona,
+        lang: voiceLanguageRef.current,
         onStart: markSpeaking,
         onEnd: done,
         onError: (err) => {
@@ -250,7 +304,7 @@ export default function VideoInterviewRoom() {
         },
       });
 
-    if (serverVoiceRef.current) {
+    if (serverVoiceRef.current && voiceLanguageRef.current !== 'hi-IN') {
       markSpeaking();
       ServerSpeaker.speak(text)
         .then(done)
@@ -297,22 +351,59 @@ export default function VideoInterviewRoom() {
     }
   };
 
-  const startListening = () => {
-    if (isMicMuted) {
+  const startListening = (langOverride?: 'en-US' | 'hi-IN') => {
+    const activeLang = langOverride || voiceLanguageRef.current || 'en-US';
+    if (isMicMutedRef.current) {
       setPhase('listening');
       return; // User can type in text area
     }
 
     setPhase('listening');
 
+    // If Hindi: Deepgram Flux is English-only, so always use native browser speech recognition with 'hi-IN'
+    if (activeLang === 'hi-IN') {
+      stopServerListener();
+      stopListening();
+
+      const controller = BrowserSpeechService.startListening({
+        lang: 'hi-IN',
+        onTranscript: (text, isFinal) => {
+          answerBufferRef.current = text;
+          setTranscriptBuffer(text);
+          clearIdleTimer();
+        },
+        onError: (err) => {
+          console.warn('Browser Hindi speech recognition error:', err);
+          setPhase('listening');
+        },
+        onEnd: () => {
+          if (phaseRef.current === 'listening' && !isMicMutedRef.current && voiceLanguageRef.current === 'hi-IN') {
+            setTimeout(() => {
+              if (phaseRef.current === 'listening' && !isMicMutedRef.current) {
+                startListening('hi-IN');
+              }
+            }, 300);
+          }
+        },
+        silenceThresholdSeconds: 3,
+      });
+
+      recognitionControllerRef.current = controller;
+      return;
+    }
+
+    // English mode: use server voice if configured, else browser speech
     if (serverVoiceRef.current) {
       startServerListening();
       return;
     }
 
     const controller = BrowserSpeechService.startListening({
+      lang: 'en-US',
       onTranscript: (text, isFinal) => {
+        answerBufferRef.current = text;
         setTranscriptBuffer(text);
+        clearIdleTimer();
       },
       onError: (err) => {
         console.warn('Browser speech recognition error:', err);
@@ -320,12 +411,15 @@ export default function VideoInterviewRoom() {
         setPhase('listening');
       },
       onEnd: () => {
-        // Recognition ended naturally; stay in listening phase so user can review transcript
+        if (phaseRef.current === 'listening' && !isMicMutedRef.current && voiceLanguageRef.current === 'en-US' && !serverVoiceRef.current) {
+          setTimeout(() => {
+            if (phaseRef.current === 'listening' && !isMicMutedRef.current) {
+              startListening('en-US');
+            }
+          }, 300);
+        }
       },
       silenceThresholdSeconds: 4,
-      onSilenceDetected: (secs) => {
-        // Inform user but don't auto-submit
-      },
     });
 
     recognitionControllerRef.current = controller;
@@ -627,6 +721,7 @@ export default function VideoInterviewRoom() {
     if (firstQuestion) beginQuestion(firstQuestion, false);
   };
 
+
   // ─── Loading State ────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -661,25 +756,25 @@ export default function VideoInterviewRoom() {
     );
   }
 
-  // ─── Main Video Room Layout ───────────────────────────────────────────
+  // ─── Main Video Room Layout ───────────────────────────────────────
   return (
     <div
       ref={interviewRoomRef}
       className="fixed inset-0 flex flex-col bg-[#060913] overflow-hidden"
-      style={{ zIndex: 40 }}
+      style={{ zIndex: 100 }}
     >
       {/* ── TOP BAR ───────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-2.5 bg-[#05080f]/90 border-b border-slate-800 flex-shrink-0 z-10">
+      <div className="flex items-center justify-between px-3 sm:px-6 py-2 sm:py-2.5 bg-[#05080f]/90 border-b border-slate-800 flex-shrink-0 z-10">
         {/* Left: Interview info */}
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-7 h-7 flex-shrink-0 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center">
             <span className="text-indigo-400 text-[10px] font-bold">AI</span>
           </div>
-          <div>
-            <p className="text-xs font-semibold text-white leading-tight">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-white leading-tight truncate max-w-[120px] sm:max-w-none">
               {interview?.targetRole}
             </p>
-            <p className="text-[10px] text-slate-500 capitalize">
+            <p className="text-[10px] text-slate-500 capitalize hidden sm:block">
               {interview?.interviewType?.replace('_', ' ')} • {interview?.difficulty}
             </p>
           </div>
@@ -687,82 +782,109 @@ export default function VideoInterviewRoom() {
 
         {/* Center: Status pill */}
         <div
-          className={`hidden sm:flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-medium transition-all ${
-            isSpeaking
-              ? 'bg-indigo-600/15 border-indigo-500/30 text-indigo-300'
-              : isThinking
+          className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 rounded-full border text-[10px] sm:text-[11px] font-medium transition-all ${isSpeaking
+            ? 'bg-indigo-600/15 border-indigo-500/30 text-indigo-300'
+            : isThinking
               ? 'bg-amber-600/15 border-amber-500/30 text-amber-300'
               : isListening
-              ? 'bg-emerald-600/15 border-emerald-500/30 text-emerald-300'
-              : isPaused
-              ? 'bg-slate-700/30 border-slate-600/30 text-slate-400'
-              : 'bg-slate-800/50 border-slate-700/30 text-slate-500'
-          }`}
+                ? 'bg-emerald-600/15 border-emerald-500/30 text-emerald-300'
+                : isPaused
+                  ? 'bg-slate-700/30 border-slate-600/30 text-slate-400'
+                  : 'bg-slate-800/50 border-slate-700/30 text-slate-500'
+            }`}
         >
           <div
-            className={`w-1.5 h-1.5 rounded-full ${
-              isSpeaking
-                ? 'bg-indigo-400 animate-pulse'
-                : isThinking
+            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isSpeaking
+              ? 'bg-indigo-400 animate-pulse'
+              : isThinking
                 ? 'bg-amber-400 animate-pulse'
                 : isListening
-                ? 'bg-emerald-400 animate-pulse'
-                : 'bg-slate-500'
-            }`}
+                  ? 'bg-emerald-400 animate-pulse'
+                  : 'bg-slate-500'
+              }`}
           />
-          {getStatusLabel(phase, currentQuestion?.isFollowUp || false)}
+          <span className="text-[10px] sm:text-[11px]">{getStatusLabel(phase, currentQuestion?.isFollowUp || false)}</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          {/* Video / Chat tab switcher — always visible and works on desktop & mobile */}
+          <div className="flex rounded-lg bg-slate-800/80 p-0.5 border border-slate-700">
+            <button
+              type="button"
+              onClick={showVideo}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium rounded-md transition ${!isChatVisible ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                }`}
+            >
+              <Video className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Video</span>
+            </button>
+            <button
+              type="button"
+              onClick={showChat}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium rounded-md transition ${isChatVisible ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Chat</span>
+            </button>
+          </div>
+          {/* <label className="sr-only" htmlFor="interviewer-voice-language">Voice language</label>
+          <select
+            id="interviewer-voice-language"
+            value={voiceLanguage}
+            onChange={(event) => handleVoiceLanguageChange(event.target.value as 'en-US' | 'hi-IN')}
+            title="Choose voice language (English or Hindi). Speech recognition updates immediately."
+            className="h-8 rounded-lg border border-slate-700 bg-slate-800 px-2 text-[10px] text-slate-200 outline-none focus:border-indigo-500 cursor-pointer"
+          >
+            <option value="en-US">Voice: English</option>
+            <option value="hi-IN">Voice: Hindi</option>
+          </select> */}
           <button
             onClick={handleToggleFullscreen}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs transition"
+            className="p-1.5 sm:p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs transition"
             title={isBrowserFullscreen ? 'Exit full screen' : 'Enter full screen'}
           >
-            {isBrowserFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isBrowserFullscreen ? <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </button>
+          {/* Chat panel toggle — always visible */}
           <button
-            onClick={() => setIsPanelExpanded(!isPanelExpanded)}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs transition"
-            title={isPanelExpanded ? 'Hide panel' : 'Show panel'}
+            type="button"
+            onClick={toggleChat}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border ${isChatVisible
+              ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300 hover:bg-indigo-600/30'
+              : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white'
+              }`}
+            title={isChatVisible ? 'Hide chat' : 'Show chat'}
           >
-            {isPanelExpanded ? (
-              <Minimize2 className="w-4 h-4" />
-            ) : (
-              <Maximize2 className="w-4 h-4" />
-            )}
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{isChatVisible ? 'Hide Chat' : 'Chat'}</span>
           </button>
         </div>
       </div>
 
       {/* ── MAIN CONTENT AREA ─────────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
+
+        {/* ══════════════════════════════════════════════════════════
+            MOBILE LAYOUT: tabs switch between Video and Chat
+            TABLET / DESKTOP: side-by-side
+        ══════════════════════════════════════════════════════════ */}
+
         {/* ── VIDEO AREA ──────────────────────────────────────────────── */}
-        <div className="relative flex-1 min-w-0 bg-[#060913]">
+        <div
+          className={`relative bg-[#060913] ${isMobileView
+            ? isChatVisible ? 'hidden' : 'flex-1 min-w-0'
+            : 'flex-1 min-w-0'
+            }`}
+        >
           {/* AI Interviewer — main tile */}
           <div className="absolute inset-0">
             <div className="relative h-full w-full">
-              {/* Background card with grid lines for realism */}
+              {/* Subtle grid background */}
               <div
                 className="absolute inset-0 overflow-hidden border border-slate-800/80"
                 style={{
-                  background:
-                    'linear-gradient(135deg, #090d1a 0%, #0e1527 50%, #090d1a 100%)',
-                  backgroundImage: `
-                    linear-gradient(135deg, #090d1a 0%, #0e1527 50%, #090d1a 100%),
-                    repeating-linear-gradient(
-                      0deg,
-                      transparent,
-                      transparent 39px,
-                      rgba(30,41,59,0.3) 40px
-                    ),
-                    repeating-linear-gradient(
-                      90deg,
-                      transparent,
-                      transparent 39px,
-                      rgba(30,41,59,0.3) 40px
-                    )
-                  `,
+                  background: 'linear-gradient(135deg, #090d1a 0%, #0e1527 50%, #090d1a 100%)',
                 }}
               />
 
@@ -778,39 +900,41 @@ export default function VideoInterviewRoom() {
               />
 
               {/* Persona name tag */}
-              <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 bg-black/60 rounded-xl backdrop-blur-sm border border-white/10">
-                <div className={`w-2 h-2 rounded-full ${isSpeaking ? 'bg-indigo-400 animate-pulse' : 'bg-slate-500'}`} />
+              <div className="absolute bottom-4 left-4 flex items-center gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-black/60 rounded-xl backdrop-blur-sm border border-white/10">
+                <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isSpeaking ? 'bg-indigo-400 animate-pulse' : 'bg-slate-500'}`} />
                 <div>
-                  <p className="text-xs font-semibold text-white">{personaConfig.name}</p>
-                  <p className="text-[10px] text-slate-400">{personaConfig.title}</p>
+                  <p className="text-[11px] sm:text-xs font-semibold text-white">{personaConfig.name}</p>
+                  <p className="text-[9px] sm:text-[10px] text-slate-400 hidden sm:block">{personaConfig.title}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── CANDIDATE PREVIEW — floating top-right corner ─────────── */}
+          {/* ── CANDIDATE PREVIEW — floating tile (responsive size) ── */}
           <div
-            className="absolute top-3 right-3 z-20 transition-all duration-300"
-            style={{ width: isPanelExpanded ? '160px' : '200px' }}
+            className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 transition-all duration-300"
+            style={{
+              width: isMobileView ? '90px' : isChatVisible ? '140px' : '200px',
+            }}
           >
             <CandidateCamera
               isEnabled={isCameraOn}
-              className="w-full aspect-video rounded-2xl"
+              className="w-full aspect-video rounded-xl sm:rounded-2xl"
               onPermissionDenied={(msg) => console.warn('Camera:', msg)}
             />
             {/* My name tag */}
-            <div className="mt-1 px-2 py-1 bg-black/60 rounded-lg backdrop-blur-sm flex items-center gap-1.5">
+            <div className="mt-1 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-black/60 rounded-lg backdrop-blur-sm flex items-center gap-1">
               <div className={`w-1.5 h-1.5 rounded-full ${!isMicMuted ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-              <p className="text-[10px] text-white font-medium">{user?.name || 'You'}</p>
+              <p className="text-[9px] sm:text-[10px] text-white font-medium truncate">{user?.name || 'You'}</p>
             </div>
           </div>
 
           {/* ── Error Banner ─────────────────────────────────────────── */}
           {error && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 max-w-sm w-full mx-4">
-              <div className="flex items-center gap-3 p-3 bg-rose-900/80 rounded-xl border border-rose-500/40 backdrop-blur-sm text-rose-200 text-xs">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                <span className="flex-1">{error}</span>
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 w-[calc(100%-2rem)] max-w-sm">
+              <div className="flex items-center gap-2 p-2.5 sm:p-3 bg-rose-900/80 rounded-xl border border-rose-500/40 backdrop-blur-sm text-rose-200 text-xs">
+                <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-rose-400" />
+                <span className="flex-1 text-[11px] sm:text-xs">{error}</span>
                 <button onClick={() => setError(null)} className="text-rose-400 hover:text-white">✕</button>
               </div>
             </div>
@@ -819,39 +943,47 @@ export default function VideoInterviewRoom() {
           {/* ── Paused Overlay ─────────────────────────────────────── */}
           {isPaused && (
             <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-20">
-              <div className="flex flex-col items-center gap-3 p-6 bg-slate-900/90 rounded-2xl border border-slate-700">
-                <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
-                  <span className="text-amber-400 text-lg">⏸</span>
+              <div className="flex flex-col items-center gap-3 p-5 sm:p-6 bg-slate-900/90 rounded-2xl border border-slate-700">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+                  <span className="text-amber-400 text-base sm:text-lg">⏸</span>
                 </div>
                 <p className="text-sm font-semibold text-white">Interview Paused</p>
-                <p className="text-xs text-slate-400">Press Resume in the toolbar to continue</p>
+                <p className="text-xs text-slate-400 text-center">Press Resume in the toolbar to continue</p>
               </div>
             </div>
           )}
+
         </div>
 
         {/* ── CONVERSATION PANEL ───────────────────────────────────────── */}
-        {isPanelExpanded && (
-          <div className="w-80 xl:w-96 flex-shrink-0 border-l border-slate-800 flex flex-col">
-            <ConversationPanel
-              phase={phase}
-              persona={persona}
-              currentQuestionText={currentQuestion?.questionText || ''}
-              isFollowUp={currentQuestion?.isFollowUp || false}
-              questionIndex={questionIndex}
-              totalQuestions={totalQuestions}
-              transcriptBuffer={transcriptBuffer}
-              onTranscriptChange={(value) => {
-                answerBufferRef.current = value;
-                setTranscriptBuffer(value);
-              }}
-              isListening={isListening && !isMicMuted}
-              isMicMuted={isMicMuted}
-              conversationHistory={conversationHistory}
-              className="h-full"
-            />
-          </div>
-        )}
+        {/* Mobile: full width tab | Tablet/Desktop: side panel */}
+        <div
+          className={`flex flex-col border-l border-slate-800 ${isMobileView
+            ? isChatVisible ? 'flex-1 min-w-0 border-l-0' : 'hidden'
+            : isChatVisible
+              ? 'w-72 md:w-80 xl:w-96 flex-shrink-0'
+              : 'hidden'
+            }`}
+        >
+          <ConversationPanel
+            phase={phase}
+            persona={persona}
+            currentQuestionText={currentQuestion?.questionText || ''}
+            isFollowUp={currentQuestion?.isFollowUp || false}
+            questionIndex={questionIndex}
+            totalQuestions={totalQuestions}
+            transcriptBuffer={transcriptBuffer}
+            onTranscriptChange={(value) => {
+              answerBufferRef.current = value;
+              setTranscriptBuffer(value);
+            }}
+            isListening={isListening && !isMicMuted}
+            isMicMuted={isMicMuted}
+            conversationHistory={conversationHistory}
+            className="h-full"
+            onClose={showVideo}
+          />
+        </div>
       </div>
 
       {/* ── BOTTOM TOOLBAR ────────────────────────────────────────────── */}
@@ -875,28 +1007,28 @@ export default function VideoInterviewRoom() {
       {/* ── END INTERVIEW MODAL ──────────────────────────────────────── */}
       {showEndModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-panel w-full max-w-md rounded-2xl border border-slate-700 p-6 space-y-4 shadow-2xl">
+          <div className="glass-panel w-full max-w-md rounded-2xl border border-slate-700 p-5 sm:p-6 space-y-4 shadow-2xl">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center flex-shrink-0">
                 <span className="text-red-400">✕</span>
               </div>
-              <h3 className="text-base font-bold text-white">End Interview Session?</h3>
+              <h3 className="text-sm sm:text-base font-bold text-white">End Interview Session?</h3>
             </div>
-            <p className="text-sm text-slate-300 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
               The AI engine will finalize your performance evaluation based on all answers
               submitted so far and generate your full report.
             </p>
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
               <button
                 onClick={() => setShowEndModal(false)}
-                className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition"
+                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition"
               >
-                Continue Interview
+                Continue
               </button>
               <button
                 onClick={handleConfirmEnd}
                 disabled={isSubmitting}
-                className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition flex items-center gap-2 disabled:opacity-60"
+                className="px-4 sm:px-5 py-2 bg-red-600 hover:bg-red-500 text-white text-xs sm:text-sm font-semibold rounded-xl transition flex items-center gap-2 disabled:opacity-60"
               >
                 {isSubmitting ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Finalizing...</>

@@ -3,7 +3,7 @@
  * and voice state machine integration.
  */
 
-export type SpeechEventType = 
+export type SpeechEventType =
   | 'transcript_interim'
   | 'transcript_final'
   | 'silence_detected'
@@ -29,6 +29,14 @@ export class BrowserSpeechService {
   private static currentUtterance: SpeechSynthesisUtterance | null = null;
 
   /**
+   * Detect if text is predominantly Hindi (Devanagari script)
+   */
+  private static isHindiText(text: string): boolean {
+    const devanagariCount = (text.match(/[\u0900-\u097F]/g) || []).length;
+    return devanagariCount > text.length * 0.15;
+  }
+
+  /**
    * Speak question or text using SpeechSynthesis
    */
   public static speak(
@@ -40,6 +48,7 @@ export class BrowserSpeechService {
       rate?: number;
       pitch?: number;
       persona?: 'technical' | 'hr' | 'mentor';
+      lang?: string; // force language e.g. 'hi-IN'
     } = {}
   ): void {
     if (!this.synth) {
@@ -51,7 +60,10 @@ export class BrowserSpeechService {
     this.stopSpeaking();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    
+
+    // Auto-detect Hindi vs English
+    const isHindi = options.lang === 'hi-IN' || this.isHindiText(text);
+
     // Voice settings by persona
     switch (options.persona) {
       case 'hr':
@@ -63,24 +75,37 @@ export class BrowserSpeechService {
         utterance.pitch = options.pitch ?? 0.95;
         break;
       default: // technical
-        utterance.rate = options.rate ?? 1.0;
+        utterance.rate = options.rate ?? (isHindi ? 0.92 : 1.0);
         utterance.pitch = options.pitch ?? 1.0;
     }
 
-    // Pick best English voice available
     const voices = this.synth.getVoices();
-    const preferredVoice = voices.find(
-      (v) =>
-        (v.lang.startsWith('en') &&
-          (v.name.includes('Google') ||
-            v.name.includes('Natural') ||
-            v.name.includes('Samantha') ||
-            v.name.includes('Daniel') ||
-            v.name.includes('Karen'))) ||
-        v.lang === 'en-US'
-    );
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
+
+    if (isHindi) {
+      // Pick best Hindi voice, or fallback to Indian English/available voice
+      const hindiVoice =
+        voices.find((v) => (v.lang === 'hi-IN' || v.lang.startsWith('hi')) && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Hemant') || v.name.includes('Kalpana'))) ||
+        voices.find((v) => v.lang === 'hi-IN' || v.lang.startsWith('hi')) ||
+        voices.find((v) => v.lang === 'en-IN');
+      if (hindiVoice) {
+        utterance.voice = hindiVoice;
+        utterance.lang = hindiVoice.lang;
+      } else {
+        utterance.lang = 'hi-IN';
+      }
+    } else {
+      // Pick best English voice available
+      const preferredVoice = voices.find(
+        (v) =>
+          (v.lang.startsWith('en') &&
+            (v.name.includes('Google') ||
+              v.name.includes('Natural') ||
+              v.name.includes('Samantha') ||
+              v.name.includes('Daniel') ||
+              v.name.includes('Karen'))) ||
+          v.lang === 'en-US'
+      );
+      if (preferredVoice) utterance.voice = preferredVoice;
     }
 
     this.currentUtterance = utterance;
@@ -141,7 +166,7 @@ export class BrowserSpeechService {
       options.onError(
         'Speech recognition is not supported in this browser. Please use text answer fallback.'
       );
-      return { stop: () => {} };
+      return { stop: () => { } };
     }
 
     const SpeechRecognition =
@@ -220,7 +245,7 @@ export class BrowserSpeechService {
         if (silenceTimer) clearTimeout(silenceTimer);
         try {
           recognition.stop();
-        } catch {}
+        } catch { }
       },
     };
   }

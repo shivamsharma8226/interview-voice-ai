@@ -3,7 +3,7 @@
 import React from 'react';
 import { ConversationPhase, InterviewerPersona, PERSONA_CONFIGS } from '@/lib/conversationStateMachine';
 import { AudioWaveform } from '@/components/AudioWaveform';
-import { Mic, MicOff, Brain, Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Brain, Sparkles, CheckCircle2, Loader2, X } from 'lucide-react';
 
 interface ConversationPanelProps {
   phase: ConversationPhase;
@@ -18,6 +18,7 @@ interface ConversationPanelProps {
   isMicMuted: boolean;
   conversationHistory: { role: 'interviewer' | 'candidate'; text: string; isFollowUp?: boolean }[];
   className?: string;
+  onClose?: () => void;
 }
 
 /**
@@ -37,6 +38,7 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
   isMicMuted,
   conversationHistory,
   className = '',
+  onClose,
 }) => {
   const personaConfig = PERSONA_CONFIGS[persona];
   const progressPct = totalQuestions > 0 ? Math.round(((questionIndex + 1) / totalQuestions) * 100) : 0;
@@ -54,9 +56,20 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
               Interview Progress
             </span>
           </div>
-          <span className="text-xs font-mono text-slate-400">
-            {questionIndex + 1} / {totalQuestions}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-slate-400">
+              {questionIndex + 1} / {totalQuestions}
+            </span>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition ml-1"
+                title="Close chat panel"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Progress bar */}
@@ -81,7 +94,7 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
             </span>
           )}
         </div>
-        <p className="text-sm text-slate-200 leading-relaxed font-medium">
+        <p className="text-sm leading-relaxed font-medium">
           {currentQuestionText || (
             <span className="text-slate-500 italic">
               {phase === 'initializing' ? 'Loading...' : 'Preparing next question...'}
@@ -101,34 +114,31 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
           conversationHistory.map((entry, i) => (
             <div
               key={i}
-              className={`flex gap-2 animate-fade-in ${
-                entry.role === 'interviewer' ? 'flex-row' : 'flex-row-reverse'
-              }`}
+              className={`flex gap-2 animate-fade-in ${entry.role === 'interviewer' ? 'flex-row' : 'flex-row-reverse'
+                }`}
             >
               {/* Icon */}
               <div
-                className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold mt-0.5 ${
-                  entry.role === 'interviewer'
-                    ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-600/30'
-                    : 'bg-emerald-600/20 text-emerald-400 border border-emerald-600/30'
-                }`}
+                className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold mt-0.5 ${entry.role === 'interviewer'
+                  ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-600/30'
+                  : 'bg-emerald-600/20 text-emerald-400 border border-emerald-600/30'
+                  }`}
               >
                 {entry.role === 'interviewer' ? 'AI' : 'Me'}
               </div>
               {/* Bubble */}
               <div
-                className={`max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
-                  entry.role === 'interviewer'
-                    ? 'bg-slate-800/80 text-slate-300 rounded-tl-none'
-                    : 'bg-indigo-600/15 text-slate-200 rounded-tr-none border border-indigo-600/20'
-                }`}
+                className={`max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed ${entry.role === 'interviewer'
+                  ? 'bg-slate-800/80 text-slate-300 rounded-tl-none'
+                  : 'bg-indigo-600/15 text-slate-200 rounded-tr-none border border-indigo-600/20'
+                  }`}
               >
                 {entry.isFollowUp && (
                   <span className="inline-flex items-center gap-1 text-[9px] text-amber-400 mb-1">
                     <Sparkles className="w-2.5 h-2.5" /> Follow-up
                   </span>
                 )}
-                <p className="line-clamp-4">{entry.text}</p>
+                <p className="line-clamp-4 color-white">{entry.text}</p>
               </div>
             </div>
           ))
@@ -169,8 +179,8 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
               isMicMuted
                 ? 'Mic is muted. Type your answer here...'
                 : isListening
-                ? 'Listening... your words appear here in real time'
-                : 'Your spoken or typed answer will appear here'
+                  ? 'Listening... your words appear here in real time'
+                  : 'Your spoken or typed answer will appear here'
             }
             rows={4}
             className="w-full p-3 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/70 leading-relaxed resize-none transition"
