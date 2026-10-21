@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import Image from 'next/image';
+import React, { useState } from 'react';
 import { InterviewerPersona, PERSONA_CONFIGS } from '@/lib/conversationStateMachine';
 
 interface AvatarPresenterProps {
@@ -24,6 +23,7 @@ export const AvatarPresenter: React.FC<AvatarPresenterProps> = ({
   isPaused,
   onIntroComplete,
 }) => {
+  const [imageFailed, setImageFailed] = useState(false);
   const personaConfig = PERSONA_CONFIGS[persona];
   const state = isSpeaking ? 'speaking' : isThinking ? 'thinking' : isListening ? 'listening' : 'ready';
   const stateLabel = isSpeaking
@@ -57,16 +57,22 @@ export const AvatarPresenter: React.FC<AvatarPresenterProps> = ({
           onError={onIntroComplete}
         />
       )}
-      <Image
-        src="/images/alex-chen-interviewer-wide.png"
-        alt={`${personaConfig.name}, ${personaConfig.title}`}
-        fill
-        priority
-        sizes="(max-width: 640px) 100vw, 60vw"
-        className={`object-cover object-center transition-all duration-700 ${
-          isPaused ? 'scale-100 saturate-50' : 'scale-[1.015] interviewer-idle'
-        }`}
-      />
+      {!imageFailed ? (
+        <img
+          src="/images/alex-chen-interviewer-wide.png"
+          alt={`${personaConfig.name}, ${personaConfig.title}`}
+          className={`absolute inset-0 h-full w-full object-cover object-center transition-all duration-700 ${
+            isPaused ? 'scale-100 saturate-50' : 'scale-[1.015] interviewer-idle'
+          }`}
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#20153f] text-center text-white">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 text-2xl font-semibold">A</div>
+          <p className="mt-4 text-sm font-semibold">{personaConfig.name}</p>
+          <p className="mt-1 text-xs text-violet-200">Interviewer video is temporarily unavailable</p>
+        </div>
+      )}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/10" />
       <div
         className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${

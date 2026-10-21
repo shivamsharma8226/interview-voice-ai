@@ -76,6 +76,7 @@ export default function VideoInterviewRoom() {
   const turnBusyRef = useRef(false);
   const pendingUtterancesRef = useRef<string[]>([]);
   const isMicMutedRef = useRef(false);
+  const voiceFallbackInProgressRef = useRef(false);
   const interviewRoomRef = useRef<HTMLDivElement>(null);
 
   const joinText = (a: string, b: string) => [a.trim(), b.trim()].filter(Boolean).join(' ');
@@ -314,8 +315,8 @@ export default function VideoInterviewRoom() {
         setTranscriptBuffer(text);
       },
       onError: (err) => {
-        // Don't crash — fall back to text input
-        console.warn('Recognition error (text fallback active):', err);
+        console.warn('Browser speech recognition error:', err);
+        setError(err);
         setPhase('listening');
       },
       onEnd: () => {
@@ -356,7 +357,21 @@ export default function VideoInterviewRoom() {
           },
           onSpeechStart: clearIdleTimer,
           onEndOfTurn: (text) => handleCandidateTurn(text),
-          onError: (message) => console.warn('Voice error:', message),
+          onError: (message) => {
+            console.warn('Realtime voice error:', message);
+            // A failed WebSocket must not leave the interview silently listening.
+            // Chrome's built-in recognizer is a reliable fallback when available.
+            if (!voiceFallbackInProgressRef.current && serverVoiceRef.current) {
+              voiceFallbackInProgressRef.current = true;
+              serverVoiceRef.current = false;
+              stopServerListener();
+              setError(`${message}. Switched to browser speech recognition.`);
+              setTimeout(() => {
+                voiceFallbackInProgressRef.current = false;
+                if (phaseRef.current === 'listening' && !isMicMutedRef.current) startListening();
+              }, 0);
+            }
+          },
         },
         keytermsRef.current
       );
