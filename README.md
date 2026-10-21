@@ -185,6 +185,39 @@ Both builds compile with 0 errors.
 
 ---
 
+## Deploy to production
+
+Recommended setup: deploy the Express API to Railway, the Next.js client to Vercel, and use MongoDB Atlas for the database.
+
+### 1. Create the MongoDB Atlas database
+
+Create an Atlas cluster, create a database user, and copy its connection string. Put that value in `MONGODB_URI`. In Atlas Network Access, allow your Railway service to connect (for initial setup, `0.0.0.0/0` is the simple option; restrict it later if you have fixed egress addresses).
+
+### 2. Deploy the backend on Railway
+
+- Create a new Railway project from this repository.
+- Set the service root directory to `server`.
+- Set Build Command to `npm run build` and Start Command to `npm run start`.
+- Add: `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRET` (a long random value), `JWT_EXPIRES_IN=7d`, and any AI or voice-provider variables you use.
+- Generate a public Railway domain and copy it, for example `https://your-api.up.railway.app`.
+
+### 3. Deploy the frontend on Vercel
+
+- Import the same repository into Vercel.
+- Set Root Directory to `client`.
+- Vercel will detect Next.js; keep Build Command as `npm run build`.
+- Add `BACKEND_URL=https://your-api.up.railway.app`. This project uses it to proxy `/api/*` requests; without it production would incorrectly point to localhost.
+- If you use server voice features, also add `NEXT_PUBLIC_WS_URL=wss://your-api.up.railway.app`.
+- Deploy and copy the Vercel URL, for example `https://your-app.vercel.app`.
+
+### 4. Connect both services
+
+In Railway, set `FRONTEND_URL` to the exact Vercel URL and redeploy the API. Then open `https://your-api.up.railway.app/api/health`; it should show `database: connected`. Finally, register a new user, upload a small PDF, and start a practice session from the Vercel site.
+
+Never commit `.env` files, database passwords, JWT secrets, or provider keys. Add them only through Railway and Vercel environment-variable settings.
+
+---
+
 ## AI Provider Configuration
 
 ### 1. Local Engine (Default)
