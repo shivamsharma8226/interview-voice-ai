@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
 import { api } from '@/lib/api';
 import { InterviewItem } from '@/lib/types';
+import PublicDashboard from '@/components/PublicDashboard';
 import {
   PlayCircle,
   Award,
@@ -32,22 +32,16 @@ import {
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
 
   const [interviews, setInterviews] = useState<InterviewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-      return;
-    }
-
     if (user) {
       fetchDashboardData();
     }
-  }, [user, authLoading, router]);
+  }, [user]);
 
   const fetchDashboardData = async () => {
     try {
@@ -61,7 +55,24 @@ export default function DashboardPage() {
     }
   };
 
-  if (authLoading || (loading && !interviews.length)) {
+  if (authLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-24">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          <p className="text-sm text-slate-400">Loading your interview dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // A signed-out visitor can view the product dashboard, but private data and
+  // every action that starts a service remain behind the login wall.
+  if (!user) {
+    return <PublicDashboard />;
+  }
+
+  if (loading && !interviews.length) {
     return (
       <div className="flex-1 flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-3">

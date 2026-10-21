@@ -36,18 +36,18 @@ export default function LandingPage() {
           <div className="text-center max-w-3xl mx-auto space-y-6">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/90 border border-indigo-500/30 text-xs font-medium text-indigo-300 shadow-sm shadow-indigo-500/10">
               <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Voice-Powered • Resume Intelligence • Adaptive Rubrics</span>
+              <span>Structured practice for real interviews</span>
             </div>
 
             <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-[1.15]">
-              Master Your Next Interview with a Realistic{' '}
+              Practice for Your Next Interview with a{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-indigo-300">
                 AI Interviewer
               </span>
             </h1>
 
             <p className="text-lg sm:text-xl text-slate-300 font-normal leading-relaxed">
-              Upload your resume, select your target role, and experience realistic mock interviews with spoken questions, speech-to-text answers, adaptive follow-ups, and evidence-based rubric scoring.
+              Upload your resume, choose a role, and rehearse out loud. Get focused questions, editable transcripts, follow-ups, and clear feedback you can use for the real conversation.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
@@ -74,7 +74,7 @@ export default function LandingPage() {
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" /> PDF & DOCX Parsing
               </span>
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> 100% Private Audio
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Edit before you submit
               </span>
             </div>
           </div>
@@ -157,7 +157,7 @@ export default function LandingPage() {
               A Complete Mock Interview Pipeline
             </h3>
             <p className="text-slate-400 text-sm sm:text-base">
-              Built from first principles to simulate actual hiring bars, avoiding generic boilerplate responses.
+              Everything you need to prepare deliberately—without losing the flow of a real conversation.
             </p>
           </div>
 
@@ -232,8 +232,8 @@ export default function LandingPage() {
             <h2 className="text-xs font-mono uppercase tracking-widest text-indigo-400 font-semibold">
               Clear 4-Step Workflow
             </h2>
-            <h3 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              How InterviewAI Prepares You
+              <h3 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+              A Simple Practice Routine
             </h3>
           </div>
 
@@ -245,7 +245,7 @@ export default function LandingPage() {
               </div>
               <h4 className="text-base font-semibold text-white mb-2">1. Upload Resume</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Drop your PDF or Word resume. Our server extracts verified skills, projects, and career milestones.
+                Add your PDF or Word resume so the session starts with your experience in mind.
               </p>
             </div>
 
@@ -256,7 +256,7 @@ export default function LandingPage() {
               </div>
               <h4 className="text-base font-semibold text-white mb-2">2. Customize Session</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Choose target role (e.g. Senior Frontend), category, experience level, difficulty, and focus skills.
+                Choose a target role, interview type, level, and the skills you want to practise.
               </p>
             </div>
 
@@ -278,7 +278,7 @@ export default function LandingPage() {
               </div>
               <h4 className="text-base font-semibold text-white mb-2">4. Review Analysis</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Get overall & skill-by-skill ratings, model benchmark answers, communication advice, and a 7-day plan.
+                Review your responses, identify gaps, and save practical next steps for your next round.
               </p>
             </div>
           </div>
@@ -362,14 +362,14 @@ export default function LandingPage() {
       {/* CALL TO ACTION */}
       <section className="py-20 relative overflow-hidden">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl p-8 sm:p-14 bg-gradient-to-r from-indigo-900/50 via-slate-900 to-violet-950/40 border border-indigo-500/30 text-center space-y-6 relative">
+          <div className="landing-cta rounded-3xl p-8 sm:p-14 bg-gradient-to-r from-indigo-900/50 via-slate-900 to-violet-950/40 border border-indigo-500/30 text-center space-y-6 relative">
             <div className="inline-flex p-3 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 mb-2">
               <Mic2 className="w-8 h-8" />
             </div>
-            <h3 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+            <h3 className="landing-cta-title text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
               Ready to Practice Your Next Interview?
             </h3>
-            <p className="text-slate-300 text-base max-w-2xl mx-auto leading-relaxed">
+            <p className="landing-cta-copy text-base max-w-2xl mx-auto leading-relaxed">
               Step into the interview room with genuine confidence. Get detailed scoring, pinpoint your blind spots, and rehearse your answers before the real meeting.
             </p>
             <div className="pt-2">
@@ -386,14 +386,22 @@ export default function LandingPage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="mt-auto border-t border-slate-800/80 bg-slate-950/80 py-8 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-300">InterviewAI</span>
-            <span>• Production-Oriented AI Interview Platform</span>
+      <footer className="mt-auto border-t border-[#E9E5DF] bg-white py-8 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold text-slate-700 text-sm">InterviewAI</p>
+              <p className="mt-1">Practice clearly. Walk into the real interview prepared.</p>
+            </div>
+            <nav aria-label="Footer navigation" className="flex flex-wrap items-center gap-x-5 gap-y-2 text-slate-600">
+              <Link href="#categories" className="hover:text-[#6D28D9] transition-colors">Interview types</Link>
+              <Link href="/interviews/new" className="hover:text-[#6D28D9] transition-colors">Start practice</Link>
+              <Link href="/login" className="hover:text-[#6D28D9] transition-colors">Sign in</Link>
+            </nav>
           </div>
-          <div>
-            <span>Built with Next.js, Express, MongoDB & Browser Speech Engine</span>
+          <div className="pt-4 border-t border-[#E9E5DF] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400">
+            <span>© {new Date().getFullYear()} InterviewAI. Built for better interview practice.</span>
+            <span>Your answers remain available for review in your session history.</span>
           </div>
         </div>
       </footer>

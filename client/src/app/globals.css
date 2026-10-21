@@ -3,10 +3,10 @@
 @tailwind utilities;
 
 :root {
-  --background: #060913;
-  --foreground: #f8fafc;
-  --card: #0b1120;
-  --border: #1e293b;
+  --background: #faf8f5;
+  --foreground: #1f2937;
+  --card: #ffffff;
+  --border: #e9e5df;
 }
 
 body {
@@ -16,6 +16,63 @@ body {
   overflow-x: hidden;
 }
 
+/* Warm, editorial light theme. The existing utility-heavy screens inherit this
+   map so every page moves together without a disruptive one-page redesign. */
+.bg-\[\#060913\], .bg-\[\#090d16\], .bg-\[\#05080f\], .bg-slate-950, .bg-slate-950\/60, .bg-slate-950\/80 {
+  background-color: #faf8f5 !important;
+}
+.bg-\[\#0b1120\], .bg-slate-900, .bg-slate-900\/60, .bg-slate-900\/70, .bg-slate-900\/80, .bg-slate-900\/90 {
+  background-color: #ffffff !important;
+}
+.bg-slate-800, .bg-slate-800\/50, .bg-slate-800\/60, .bg-slate-800\/80 {
+  background-color: #f4f1ed !important;
+}
+.bg-slate-700, .bg-slate-700\/30 { background-color: #ebe7e1 !important; }
+.border-slate-950, .border-slate-900, .border-slate-800, .border-slate-800\/80, .border-slate-700, .border-slate-700\/80 { border-color: #e9e5df !important; }
+.divide-slate-800 > :not([hidden]) ~ :not([hidden]) { border-color: #e9e5df !important; }
+
+.text-white, .text-slate-100, .text-slate-200, .text-slate-300 { color: #1f2937 !important; }
+.text-slate-400 { color: #6b7280 !important; }
+.text-slate-500, .text-slate-600 { color: #8a8178 !important; }
+.text-slate-700, .text-slate-800, .text-slate-900 { color: #374151 !important; }
+
+.bg-indigo-600, .bg-violet-600, .bg-violet-700 { background-color: #6d28d9 !important; }
+.hover\:bg-indigo-500:hover, .hover\:bg-violet-500:hover { background-color: #5b21b6 !important; }
+.text-indigo-300, .text-indigo-400, .text-indigo-500, .text-violet-400 { color: #6d28d9 !important; }
+.bg-indigo-500\/10, .bg-indigo-500\/15, .bg-indigo-600\/15, .bg-violet-500\/10, .bg-violet-600\/20 { background-color: #f3e8ff !important; }
+.border-indigo-500\/20, .border-indigo-500\/30, .border-indigo-500\/40, .border-violet-500\/40 { border-color: #d8b4fe !important; }
+.shadow-indigo-500\/20, .shadow-indigo-600\/20, .shadow-indigo-600\/25 { --tw-shadow-color: rgba(109, 40, 217, .18) !important; }
+[class*="from-indigo-"] { --tw-gradient-from: #6d28d9 var(--tw-gradient-from-position) !important; --tw-gradient-to: rgb(109 40 217 / 0) var(--tw-gradient-to-position) !important; }
+[class*="via-violet-"] { --tw-gradient-stops: var(--tw-gradient-from), #7c3aed var(--tw-gradient-via-position), var(--tw-gradient-to) !important; }
+[class*="to-violet-"], [class*="to-indigo-"] { --tw-gradient-to: #5b21b6 var(--tw-gradient-to-position) !important; }
+
+.text-emerald-300, .text-emerald-400, .text-emerald-500 { color: #6b7a40 !important; }
+.bg-emerald-500\/10, .bg-emerald-600\/20 { background-color: #eef1e5 !important; }
+.border-emerald-500\/20, .border-emerald-500\/30 { border-color: #cbd5aa !important; }
+.bg-emerald-400, .bg-emerald-500 { background-color: #6b7a40 !important; }
+
+.text-blue-400, .text-blue-500 { color: #e76f51 !important; }
+.bg-blue-600\/20 { background-color: #fde8e4 !important; }
+.text-rose-400, .text-rose-500 { color: #c2412d !important; }
+.bg-rose-500\/10 { background-color: #fff0ed !important; }
+.border-rose-500\/20, .border-rose-500\/30 { border-color: #f3b5a7 !important; }
+.text-amber-300, .text-amber-400 { color: #a16207 !important; }
+.bg-amber-500\/10 { background-color: #fff7df !important; }
+
+/* Preserve contrast where light text sits inside solid action buttons. */
+.bg-indigo-600.text-white, .bg-violet-600.text-white, .bg-violet-700.text-white,
+.bg-indigo-600 .text-white, .bg-violet-600 .text-white, .bg-violet-700 .text-white {
+  color: #ffffff !important;
+}
+[class*="bg-gradient"][class*="text-white"], [class*="bg-gradient"] .text-white {
+  color: #ffffff !important;
+}
+
+/* High-contrast treatment for the homepage call-to-action. It is deliberately
+   scoped so the light theme's utility map cannot wash out its copy. */
+.landing-cta-title { color: #ffffff !important; }
+.landing-cta-copy { color: #eee8ff !important; }
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
@@ -23,36 +80,36 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #f4f1ed;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #cfc7bf;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #aaa198;
 }
 
 /* Glow effects */
 .glow-purple {
-  box-shadow: 0 0 25px -5px rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 25px -5px rgba(109, 40, 217, 0.16);
 }
 
 .glow-blue {
-  box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 25px -5px rgba(231, 111, 81, 0.16);
 }
 
 .glow-emerald {
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 25px -5px rgba(107, 122, 64, 0.16);
 }
 
 /* Glass card styling */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(31, 41, 55, 0.04), 0 8px 24px rgba(31, 41, 55, 0.04);
+  border: 1px solid #e9e5df;
 }
 
 /* Print styles for downloading performance report */

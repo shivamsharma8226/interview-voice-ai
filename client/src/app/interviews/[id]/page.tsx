@@ -11,7 +11,6 @@ import {
   ConversationPhase,
   InterviewerPersona,
   PERSONA_CONFIGS,
-  getPersonaIntro,
   getStatusLabel,
 } from '@/lib/conversationStateMachine';
 import { AvatarPresenter } from '@/components/AvatarPresenter';
@@ -60,6 +59,7 @@ export default function VideoInterviewRoom() {
   const [error, setError] = useState<string | null>(null);
   const [showEndModal, setShowEndModal] = useState(false);
   const [isPanelExpanded, setIsPanelExpanded] = useState(true);
+  const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
 
   // ─── Refs ─────────────────────────────────────────────────────────────
   const recognitionControllerRef = useRef<{ stop: () => void } | null>(null);
@@ -76,6 +76,7 @@ export default function VideoInterviewRoom() {
   const turnBusyRef = useRef(false);
   const pendingUtterancesRef = useRef<string[]>([]);
   const isMicMutedRef = useRef(false);
+  const interviewRoomRef = useRef<HTMLDivElement>(null);
 
   const joinText = (a: string, b: string) => [a.trim(), b.trim()].filter(Boolean).join(' ');
 
@@ -102,6 +103,14 @@ export default function VideoInterviewRoom() {
   useEffect(() => {
     isMicMutedRef.current = isMicMuted;
   }, [isMicMuted]);
+
+  useEffect(() => {
+    const syncFullscreenState = () => {
+      setIsBrowserFullscreen(document.fullscreenElement === interviewRoomRef.current);
+    };
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
+  }, []);
 
   // ─── Timer Loop ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -188,16 +197,14 @@ export default function VideoInterviewRoom() {
         const detectedPersona =
           personaByType[data.interview.interviewType] || 'technical';
 
-        // Play intro speech
+        // Play the supplied presenter clip while browser speech reads the
+        // identical script. The clip ending, not the speech callback, advances
+        // the room so the visual introduction completes first.
         setPhase('intro_speaking');
-        const introText = getPersonaIntro(detectedPersona, data.interview.targetRole);
-
-        speakText(introText, detectedPersona, () => {
-          // After intro, move to asking first question
-          if (activeQ) {
-            beginQuestion(activeQ, false);
-          }
-        });
+        speakText(
+          "Hello, I'm Alex, your technical interviewer. I'll ask one question at a time. Please explain your thinking clearly. Let's begin.",
+          detectedPersona
+        );
       } else {
         setPhase('paused');
       }
@@ -565,6 +572,18 @@ export default function VideoInterviewRoom() {
 
   const handleEndInterview = () => setShowEndModal(true);
 
+  const handleToggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await interviewRoomRef.current?.requestFullscreen();
+      }
+    } catch {
+      setError('Full-screen mode is not available in this browser.');
+    }
+  };
+
   const handleConfirmEnd = async () => {
     setShowEndModal(false);
     clearIdleTimer();
@@ -586,6 +605,12 @@ export default function VideoInterviewRoom() {
   const isSpeaking = phase === 'interviewer_speaking' || phase === 'intro_speaking';
   const isThinking = phase === 'processing_answer' || phase === 'generating_followup';
   const isListening = phase === 'listening';
+  const handleIntroComplete = () => {
+    if (phaseRef.current !== 'intro_speaking') return;
+    stopAllSpeech();
+    const firstQuestion = questionRef.current;
+    if (firstQuestion) beginQuestion(firstQuestion, false);
+  };
 
   // ─── Loading State ────────────────────────────────────────────────────
   if (loading) {
@@ -624,6 +649,7 @@ export default function VideoInterviewRoom() {
   // ─── Main Video Room Layout ───────────────────────────────────────────
   return (
     <div
+      ref={interviewRoomRef}
       className="fixed inset-0 flex flex-col bg-[#060913] overflow-hidden"
       style={{ zIndex: 40 }}
     >
@@ -672,18 +698,26 @@ export default function VideoInterviewRoom() {
           {getStatusLabel(phase, currentQuestion?.isFollowUp || false)}
         </div>
 
-        {/* Right: Panel toggle */}
-        <button
-          onClick={() => setIsPanelExpanded(!isPanelExpanded)}
-          className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs transition"
-          title={isPanelExpanded ? 'Hide panel' : 'Show panel'}
-        >
-          {isPanelExpanded ? (
-            <Minimize2 className="w-4 h-4" />
-          ) : (
-            <Maximize2 className="w-4 h-4" />
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleToggleFullscreen}
+            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs transition"
+            title={isBrowserFullscreen ? 'Exit full screen' : 'Enter full screen'}
+          >
+            {isBrowserFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+          <button
+            onClick={() => setIsPanelExpanded(!isPanelExpanded)}
+            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs transition"
+            title={isPanelExpanded ? 'Hide panel' : 'Show panel'}
+          >
+            {isPanelExpanded ? (
+              <Minimize2 className="w-4 h-4" />
+            ) : (
+              <Maximize2 className="w-4 h-4" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* ── MAIN CONTENT AREA ─────────────────────────────────────────── */}
@@ -691,11 +725,11 @@ export default function VideoInterviewRoom() {
         {/* ── VIDEO AREA ──────────────────────────────────────────────── */}
         <div className="relative flex-1 min-w-0 bg-[#060913]">
           {/* AI Interviewer — main tile */}
-          <div className="absolute inset-0 flex items-center justify-center p-6 sm:p-10">
-            <div className="relative w-full max-w-lg h-full max-h-[480px]">
+          <div className="absolute inset-0">
+            <div className="relative h-full w-full">
               {/* Background card with grid lines for realism */}
               <div
-                className="absolute inset-0 rounded-3xl overflow-hidden border border-slate-800/80"
+                className="absolute inset-0 overflow-hidden border border-slate-800/80"
                 style={{
                   background:
                     'linear-gradient(135deg, #090d1a 0%, #0e1527 50%, #090d1a 100%)',
@@ -720,10 +754,12 @@ export default function VideoInterviewRoom() {
               {/* Avatar presenter */}
               <AvatarPresenter
                 persona={persona}
+                isIntro={phase === 'intro_speaking'}
                 isSpeaking={isSpeaking}
                 isThinking={isThinking}
                 isListening={isListening}
                 isPaused={isPaused}
+                onIntroComplete={handleIntroComplete}
               />
 
               {/* Persona name tag */}
