@@ -68,10 +68,10 @@ export const InterviewToolbar: React.FC<InterviewToolbarProps> = ({
   const isActive = phase !== 'completed' && phase !== 'error' && phase !== 'initializing';
 
   return (
-    <div className="relative flex items-center justify-between w-full px-4 sm:px-8 py-3 bg-[#05080f]/95 border-t border-slate-800 backdrop-blur-md">
+    <div className="relative flex items-center justify-between w-full px-2 sm:px-6 md:px-8 py-2.5 sm:py-3 bg-[#05080f]/95 border-t border-slate-800 backdrop-blur-md">
       {/* Left: Timer & status */}
-      <div className="flex items-center gap-4 min-w-[120px]">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 sm:min-w-[100px]">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <div
             className={`w-2 h-2 rounded-full ${
               phase === 'listening'
@@ -85,12 +85,12 @@ export const InterviewToolbar: React.FC<InterviewToolbarProps> = ({
                 : 'bg-slate-600'
             }`}
           />
-          <span className="text-xs font-mono text-slate-300">{formatTime(elapsedSeconds)}</span>
+          <span className="text-[11px] sm:text-xs font-mono text-slate-300">{formatTime(elapsedSeconds)}</span>
         </div>
       </div>
 
       {/* Center: Main controls */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 md:gap-4">
         {/* Microphone */}
         <ToolbarButton
           onClick={onToggleMic}
@@ -120,7 +120,7 @@ export const InterviewToolbar: React.FC<InterviewToolbarProps> = ({
             onClick={onSubmitAnswer}
             disabled={!canSubmit}
             title="Submit your answer"
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition shadow-lg ${
+            className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition shadow-lg ${
               canSubmit
                 ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-indigo-600/30 scale-100 hover:scale-105 active:scale-95'
                 : 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50'
@@ -128,12 +128,12 @@ export const InterviewToolbar: React.FC<InterviewToolbarProps> = ({
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
                 <span className="hidden sm:inline">Evaluating...</span>
               </>
             ) : (
               <>
-                <Send className="w-4 h-4" />
+                <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Submit Answer</span>
               </>
             )}
@@ -174,11 +174,11 @@ export const InterviewToolbar: React.FC<InterviewToolbarProps> = ({
       </div>
 
       {/* Right: End interview */}
-      <div className="flex justify-end min-w-[120px]">
+      <div className="flex items-center justify-end flex-shrink-0 sm:min-w-[100px]">
         <button
           onClick={onEndInterview}
-          title="End interview"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition shadow-lg shadow-red-600/25 active:scale-95"
+          title="End interview call"
+          className="flex items-center justify-center gap-1.5 w-9 h-9 sm:w-auto sm:px-4 sm:py-2 rounded-full sm:rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition shadow-lg shadow-red-600/25 active:scale-95"
         >
           <PhoneOff className="w-4 h-4" />
           <span className="hidden sm:inline">End</span>
@@ -202,7 +202,7 @@ const ToolbarButton: React.FC<{
     onClick={onClick}
     title={title}
     disabled={disabled}
-    className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
+    className={`w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
       active ? activeClass : inactiveClass
     }`}
   >
